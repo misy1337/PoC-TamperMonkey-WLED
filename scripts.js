@@ -38,6 +38,7 @@
           }
           prevRgb = currentRgb; // Aktualisieren des vorherigen RGB-Werts
         }
+        str = str.slice(0, -1);
         str += ");";
         console.error(str);
         //document.body.style.background = str; // Hintergrund des Body-Elements anpassen
