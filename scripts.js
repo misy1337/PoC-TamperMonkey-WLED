@@ -1,4 +1,3 @@
-
 // ==UserScript==
 // @name         WLED WebSocket Access (Combined Hex)
 // @namespace    http://tampermonkey.net/
@@ -12,8 +11,8 @@
 (function() {
     'use strict';
 
-    // Change to your WLED IP (without any pre or suffix)
-    const wLedIP = "IP"
+    // Change to your WLED IP
+    const wLedIP = "192.168.178.100"
 
     const wsUrl = `ws://${wLedIP}/ws`;
     const ws = new WebSocket(wsUrl);
