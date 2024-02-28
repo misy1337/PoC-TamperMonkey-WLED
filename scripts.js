@@ -8,82 +8,76 @@
 // @namespace    https://greasyfork.org/en/users/913506-dotty-dev
 // ==/UserScript==
 /*jshint esversion: 11 */
-
 (function () {
-    "use strict";
+  "use strict";
 
-    let str = "";
+  let str = ""; // Define str outside of the WebSocket function
 
-    // Change to your WLED IP
-    const wLedIP = "IP";
+  // Change to your WLED IP
+  const wLedIP = "192.168.178.101";
 
-    const wsUrl = `ws://${wLedIP}/ws`;
-    const ws = new WebSocket(wsUrl);
-    ws.binaryType = "arraybuffer";
+  const wsUrl = `ws://${wLedIP}/ws`;
+  const ws = new WebSocket(wsUrl);
+  ws.binaryType = "arraybuffer";
 
-    let prevRgb = ""; // Variable zum Speichern des vorherigen RGB-Werts
-    ws.addEventListener("message", (e) => {
-        try {
-            if (toString.call(e.data) === "[object ArrayBuffer]") {
-                let leds = new Uint8Array(event.data);
-                if (leds[0] != 76)
-                    return; //'L'
-                str = "linear-gradient(45deg,";
-                let len = leds.length;
-                let start = leds[1] == 2 ? 4 : 2; // 1 = 1D, 2 = 1D/2D (leds[2]=w, leds[3]=h)
-                for (let i = start; i < len; i += 3) {
-                    // Überprüfen, ob der aktuelle RGB-Wert mit dem vorherigen übereinstimmt
-                    const currentRgb = `${leds[i]}, ${leds[i + 1]}, ${leds[i + 2]}`;
-                    if (currentRgb !== prevRgb) {
-                        str += `rgb(${leds[i]},${leds[i + 1]},${leds[i + 2]})`;
-                        if (i < len - 3)
-                            str += ",";
-                    }
-                    prevRgb = currentRgb; // Aktualisieren des vorherigen RGB-Werts
-                }
-                str = str.slice(0, -1); // Entferne das letzte Komma sonst ist das CSS ungültig
-                str += ");";
-                //console.error(str);
-                //document.body.style.background = str; // Hintergrund des Body-Elements anpassen
-            }
-        } catch (err) {
-            console.error("Peek WS error:", err);
+  let prevRgb = ""; // Variable zum Speichern des vorherigen RGB-Werts
+  ws.addEventListener("message", (e) => {
+    try {
+      if (toString.call(e.data) === "[object ArrayBuffer]") {
+        let leds = new Uint8Array(event.data);
+        if (leds[0] != 76) return; //'L'
+        str = "linear-gradient(45deg,";
+        let len = leds.length;
+        let start = leds[1] == 2 ? 4 : 2; // 1 = 1D, 2 = 1D/2D (leds[2]=w, leds[3]=h)
+        for (let i = start; i < len; i += 3) {
+          // Überprüfen, ob der aktuelle RGB-Wert mit dem vorherigen übereinstimmt
+          const currentRgb = `${leds[i]}, ${leds[i + 1]}, ${leds[i + 2]}`;
+          if (currentRgb !== prevRgb) {
+            str += `rgb(${leds[i]},${leds[i + 1]},${leds[i + 2]})`;
+            if (i < len - 3) str += ",";
+          }
+          prevRgb = currentRgb; // Aktualisieren des vorherigen RGB-Werts
         }
+        str += ");";
+        console.error(str);
+        //document.body.style.background = str; // Hintergrund des Body-Elements anpassen
+      }
+    } catch (err) {
+      console.error("Peek WS error:", err);
+    }
+  });
+
+  ws.onopen = function (event) {
+    //console.log('WebSocket connection opened');
+    // Request WLED Live Stream
+    ws.send(JSON.stringify({ lv: true }));
+  };
+
+  let observerNotRunning = true;
+  const documentObserver = new MutationObserver((mutationRecords) => {
+    mutationRecords.forEach((record) => {
+      if (
+        record.target.classList.contains("css-1lua7td") ||
+        (record.target.classList.contains("css-k008qs") &&
+          observerNotRunning)
+      ) {
+        startObserver();
+      }
     });
+  });
 
-    ws.onopen = function (event) {
-        //console.log('WebSocket connection opened');
-        // Request WLED Live Stream
-        ws.send(JSON.stringify({
-                lv: true
-            }));
-    };
+  documentObserver.observe(document, {
+    childList: true,
+    attributes: true,
+    subtree: true,
+    attributeFilter: ["class"],
+  });
 
-    let observerNotRunning = true;
-    const documentObserver = new MutationObserver((mutationRecords) => {
-        mutationRecords.forEach((record) => {
-            if (
-                record.target.classList.contains("css-1lua7td") ||
-                (record.target.classList.contains("css-k008qs") &&
-                    observerNotRunning)) {
-                startObserver();
-            }
-        });
-    });
-
-    documentObserver.observe(document, {
-        childList: true,
-        attributes: true,
-        subtree: true,
-        attributeFilter: ["class"],
-    });
-
-    const startObserver = () => {
-        if (document.querySelectorAll(".observer-running").length === 0) {
-            document.head.insertAdjacentHTML(
-                "beforeend",
-                /*html*/
-                `
+  const startObserver = () => {
+    if (document.querySelectorAll(".observer-running").length === 0) {
+      document.head.insertAdjacentHTML(
+        "beforeend",
+        /*html*/ `
           <style>
             .game-shot-animation {
               position: relative;
@@ -133,46 +127,48 @@
               filter: blur(50px);
             }
           </style>
-              `);
+              `
+      );
 
-            let winnerCardEl = undefined;
-            const gameShotMessageElement = document.createElement("p");
-            gameShotMessageElement.classList.add("css-x3m75h");
-            gameShotMessageElement.classList.add("game-shot-message");
-            gameShotMessageElement.textContent = "Game Shot!";
+      let winnerCardEl = undefined;
+      const gameShotMessageElement = document.createElement("p");
+      gameShotMessageElement.classList.add("css-x3m75h");
+      gameShotMessageElement.classList.add("game-shot-message");
+      gameShotMessageElement.textContent = "Game Shot!";
 
-            const gameShotObserver = new MutationObserver((mutationRecords) => {
-                mutationRecords.forEach((mutation) => {
-                    if (
-                        winnerCardEl &&
-                        mutation.target.classList.contains("css-1acvlgt")) {
-                        winnerCardEl?.classList.remove("game-shot-animation");
-                        winnerCardEl = undefined;
-                        gameShotMessageElement.remove();
-                    }
-                    if (mutation.target?.classList?.contains("css-e9w8hh")) {
-                        winnerCardEl = mutation.target.closest(".css-3dp02s");
-                        winnerCardEl?.classList.add("game-shot-animation");
-                        mutation.target
-                        .querySelector(".css-x3m75h")
-                        .insertAdjacentElement("afterend", gameShotMessageElement);
-                    }
-                });
-            });
-            if (document.querySelector(".css-1iy3ld1")) {
-                gameShotObserver.observe(document.querySelector(".css-1iy3ld1"), {
-                    childList: true,
-                    attributes: true,
-                    attributeFilter: ["class"],
-                    subtree: true,
-                });
-                document
-                .querySelector(".css-k008qs")
-                .insertAdjacentHTML(
-                    "beforeend",
-                    /*html*/
-`<div class="observer-running"></div>`);
-            }
-        }
-    };
+      const gameShotObserver = new MutationObserver((mutationRecords) => {
+        mutationRecords.forEach((mutation) => {
+          if (
+            winnerCardEl &&
+            mutation.target.classList.contains("css-1acvlgt")
+          ) {
+            winnerCardEl?.classList.remove("game-shot-animation");
+            winnerCardEl = undefined;
+            gameShotMessageElement.remove();
+          }
+          if (mutation.target?.classList?.contains("css-e9w8hh")) {
+            winnerCardEl = mutation.target.closest(".css-3dp02s");
+            winnerCardEl?.classList.add("game-shot-animation");
+            mutation.target
+              .querySelector(".css-x3m75h")
+              .insertAdjacentElement("afterend", gameShotMessageElement);
+          }
+        });
+      });
+      if (document.querySelector(".css-1iy3ld1")) {
+        gameShotObserver.observe(document.querySelector(".css-1iy3ld1"), {
+          childList: true,
+          attributes: true,
+          attributeFilter: ["class"],
+          subtree: true,
+        });
+        document
+          .querySelector(".css-k008qs")
+          .insertAdjacentHTML(
+            "beforeend",
+            /*html*/ `<div class="observer-running"></div>`
+          );
+      }
+    }
+  };
 })();
